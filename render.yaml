@@ -16,4 +16,3 @@ services:
   - type: pserv
     name: emr-db
     plan: free
-    ipAllowList: []
