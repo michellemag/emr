@@ -8,13 +8,5 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: emr-db
-          property: connectionString
-
-databases:
-  - name: emr-db
-    databaseName: emr_db
-    user: emr_user
-    plan: free
+      - key: DATABASE_PATH
+        value: ./emr.db

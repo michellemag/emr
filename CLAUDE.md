@@ -9,7 +9,7 @@ EMR System is a web application for Victoria University medical students to prac
 **Tech Stack:**
 - Backend: Node.js with Express + TypeScript
 - Frontend: React + TypeScript with Vite
-- Database: PostgreSQL
+- Database: SQLite (file-based, no server required)
 - Monorepo structure using npm workspaces
 
 ## Development Commands
@@ -21,20 +21,13 @@ npm run install-all
 
 # Setup environment variables
 cp backend/.env.example backend/.env
-# Edit backend/.env with local PostgreSQL credentials
+# No further configuration needed - SQLite uses default ./emr.db
 ```
 
 ### Database Setup
-```bash
-# Create PostgreSQL database
-createdb emr_db
+SQLite database is automatically initialized on first server startup. No manual setup required.
 
-# Create user (if needed)
-createuser -P emr_user  # password: password (for dev only)
-
-# Load schema
-psql emr_db -U emr_user -f backend/sql/schema.sql
-```
+The database file (`emr.db`) is created in the `backend/` directory and persists across restarts.
 
 ### Development
 ```bash
@@ -105,9 +98,10 @@ The backend's `src/index.ts` is configured to:
 - `id`, `name`, `student_id`, `scenario_type`, `created_at`
 
 **forms** table: Stores EMR forms (flexible JSON structure)
-- `id`, `patient_id`, `form_type`, `location`, `data` (JSONB), `created_at`, `updated_at`
+- `id`, `patient_id`, `form_type`, `location`, `data` (TEXT/JSON), `created_at`, `updated_at`
 - form_type: 'admission', 'assessment', 'vital_signs', 'discharge'
 - location: 'hospital' or 'community'
+- **Note**: JSON data is stored as TEXT in SQLite (parsed as JSON in application)
 
 ### Data Flow
 
@@ -155,20 +149,18 @@ The app has three main views:
 ## Deployment
 
 ### Render Deployment (Blueprint - Recommended)
-The simplest way to deploy is using Render's Blueprint feature:
+The simplest way to deploy is using Render's Blueprint feature with SQLite:
 
 1. Commit code: `git push origin main`
 2. Go to https://render.com/ → **New +** → **Blueprint**
 3. Connect your GitHub repository
-4. Render will automatically create both the web service and PostgreSQL database
-5. After deployment, initialize the database:
-   - Click **Shell** in your service
-   - Run: `psql $DATABASE_URL < backend/sql/schema.sql`
+4. Render will automatically create the web service
+5. Database is automatically initialized on first startup
 
 The `render.yaml` file defines:
 - **emr-api** web service with build and start commands
-- **emr-db** PostgreSQL database (free tier)
-- Automatic environment variable setup
+- Automatic environment variable setup (`DATABASE_PATH=./emr.db`)
+- **No separate database service needed** (using SQLite)
 
 See `RENDER_BLUEPRINT_DEPLOY.md` for detailed instructions.
 
@@ -179,8 +171,8 @@ For manual setup or `Procfile`-based deployment:
 
 **Start Command:** `npm run start`
 
-**Environment Variables Required:**
-- `DATABASE_URL`: PostgreSQL connection string
+**Environment Variables:**
+- `DATABASE_PATH`: Path to SQLite database file (default: `./emr.db`)
 - `NODE_ENV`: `production`
 
 The `Procfile` provides the same build and start commands for Render's classic deployment method.
@@ -189,13 +181,15 @@ The `Procfile` provides the same build and start commands for Render's classic d
 For non-Render deployment:
 1. Run `npm run build` to create frontend and backend builds
 2. Run `npm start` to start the server
-3. Set `DATABASE_URL` environment variable for your PostgreSQL instance
+3. Set `DATABASE_PATH` environment variable if needed (default: `./emr.db`)
 4. Server listens on `PORT` environment variable (default 3001)
 
 ## Key Development Notes
 
+- **Database**: Uses SQLite (file-based, no server required). Database file (`emr.db`) is gitignored and created on first run. Each deployment gets its own database instance.
 - **Frontend Styling**: Currently uses basic CSS (`src/index.css`). Consider Tailwind or Bootstrap when expanding UI.
 - **Form Validation**: Minimal client-side validation - API accepts any JSON in form data. Add validation as requirements become clearer.
 - **Authentication**: Not yet implemented. When adding, consider student/instructor roles.
-- **Form Data Structure**: The `forms.data` field in the database is flexible JSON. Scenario-specific fields can be added here.
+- **Form Data Structure**: The `forms.data` field in the database stores JSON as TEXT. Frontend should `JSON.parse()` when retrieving and `JSON.stringify()` when sending.
 - **Vite Proxy**: In development, the frontend proxies `/api` requests to `http://localhost:3001`. This is configured in `frontend/vite.config.ts`.
+- **SQLite Backend**: Uses `sqlite3` npm package with callback-based API. Parameters use `?` placeholders instead of `$1, $2`.

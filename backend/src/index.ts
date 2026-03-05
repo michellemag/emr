@@ -1,9 +1,10 @@
 import express from 'express';
 import cors from 'cors';
-import { Pool } from 'pg';
+import sqlite3 from 'sqlite3';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -19,12 +20,28 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, '../../frontend/dist')));
 
 // Database connection
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+const databasePath = process.env.DATABASE_PATH || path.join(__dirname, '../emr.db');
+const db = new sqlite3.Database(databasePath, (err) => {
+  if (err) {
+    console.error('Database connection error:', err);
+  } else {
+    console.log('Connected to SQLite database');
+  }
 });
 
-pool.on('error', (err) => {
-  console.error('Unexpected error on idle client', err);
+// Enable foreign keys and initialize schema
+db.serialize(() => {
+  db.run('PRAGMA foreign_keys = ON');
+
+  // Initialize database schema if it doesn't exist
+  const schema = fs.readFileSync(path.join(__dirname, '../sql/schema.sql'), 'utf-8');
+  const statements = schema.split(';').filter(stmt => stmt.trim());
+
+  for (const statement of statements) {
+    if (statement.trim()) {
+      db.run(statement.trim());
+    }
+  }
 });
 
 // Health check endpoint
@@ -33,58 +50,78 @@ app.get('/health', (req, res) => {
 });
 
 // Patient endpoints
-app.get('/api/patients', async (req, res) => {
-  try {
-    const result = await pool.query('SELECT * FROM patients');
-    res.json(result.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to fetch patients' });
-  }
+app.get('/api/patients', (req, res) => {
+  db.all('SELECT * FROM patients', (err, rows) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch patients' });
+    } else {
+      res.json(rows || []);
+    }
+  });
 });
 
-app.post('/api/patients', async (req, res) => {
-  try {
-    const { name, student_id, scenario_type } = req.body;
-    const result = await pool.query(
-      'INSERT INTO patients (name, student_id, scenario_type, created_at) VALUES ($1, $2, $3, NOW()) RETURNING *',
-      [name, student_id, scenario_type]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to create patient' });
-  }
+app.post('/api/patients', (req, res) => {
+  const { name, student_id, scenario_type } = req.body;
+  const query = `INSERT INTO patients (name, student_id, scenario_type, created_at)
+                 VALUES (?, ?, ?, CURRENT_TIMESTAMP)`;
+
+  db.run(query, [name, student_id, scenario_type], function(err) {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to create patient' });
+    } else {
+      // Fetch the inserted row to return it
+      db.get('SELECT * FROM patients WHERE id = ?', [this.lastID], (err, patient) => {
+        if (err) {
+          console.error(err);
+          res.status(500).json({ error: 'Failed to fetch created patient' });
+        } else {
+          res.status(201).json(patient);
+        }
+      });
+    }
+  });
 });
 
 // EMR Form endpoints
-app.get('/api/forms/:patient_id', async (req, res) => {
-  try {
-    const { patient_id } = req.params;
-    const result = await pool.query(
-      'SELECT * FROM forms WHERE patient_id = $1 ORDER BY created_at DESC',
-      [patient_id]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to fetch forms' });
-  }
+app.get('/api/forms/:patient_id', (req, res) => {
+  const { patient_id } = req.params;
+  db.all(
+    'SELECT * FROM forms WHERE patient_id = ? ORDER BY created_at DESC',
+    [patient_id],
+    (err, rows) => {
+      if (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch forms' });
+      } else {
+        res.json(rows || []);
+      }
+    }
+  );
 });
 
-app.post('/api/forms', async (req, res) => {
-  try {
-    const { patient_id, form_type, location, data } = req.body;
-    const result = await pool.query(
-      `INSERT INTO forms (patient_id, form_type, location, data, created_at)
-       VALUES ($1, $2, $3, $4, NOW()) RETURNING *`,
-      [patient_id, form_type, location, JSON.stringify(data)]
-    );
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Failed to create form' });
-  }
+app.post('/api/forms', (req, res) => {
+  const { patient_id, form_type, location, data } = req.body;
+  const query = `INSERT INTO forms (patient_id, form_type, location, data, created_at)
+                 VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+
+  db.run(query, [patient_id, form_type, location, JSON.stringify(data)], function(err) {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to create form' });
+    } else {
+      // Fetch the inserted row to return it
+      db.get('SELECT * FROM forms WHERE id = ?', [this.lastID], (err, form) => {
+        if (err) {
+          console.error(err);
+          res.status(500).json({ error: 'Failed to fetch created form' });
+        } else {
+          res.status(201).json(form);
+        }
+      });
+    }
+  });
 });
 
 // Fallback to serve index.html for client-side routing

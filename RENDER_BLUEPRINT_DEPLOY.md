@@ -1,6 +1,6 @@
 # Render Blueprint Deployment Guide
 
-This is the simplest way to deploy to Render - it deploys everything automatically using a blueprint.
+This is the simplest way to deploy to Render - it deploys everything automatically using a blueprint. The app uses SQLite for the database, so no separate database service is needed.
 
 ## Prerequisites
 
@@ -34,37 +34,27 @@ git push origin main
 2. **Branch**: Keep as `main`
 3. Review the services that will be created:
    - **emr-api** (Web Service)
-   - **emr-db** (PostgreSQL Database)
+   - No database service needed (using SQLite)
 4. Click **"Deploy"**
 
 Render will now:
-- Create a PostgreSQL database
 - Create a web service
 - Set up environment variables automatically
 - Build your frontend and backend
 - Start the server
+- Automatically initialize the SQLite database
 
 This takes about 5-10 minutes.
 
-### Step 4: Initialize Database (One Time Only)
+### Step 4: Test Your App
 
 Once deployment completes:
-
-1. In Render Dashboard, click on your **emr-api** service
-2. Click the **"Shell"** tab
-3. Run this command to load the database schema:
-
-```bash
-psql $DATABASE_URL < backend/sql/schema.sql
-```
-
-Done! Your app is live.
-
-### Step 5: Test Your App
 
 1. Click the URL for **emr-api** service (e.g., `https://emr-api.onrender.com`)
 2. You should see the EMR application
 3. Test the API: Visit `/health` in your URL bar
+
+**Note**: The SQLite database file (`emr.db`) is automatically created on the first run. It persists in the Render service.
 
 ## Auto-Updates
 
@@ -78,8 +68,12 @@ git push origin main
 
 Render automatically rebuilds and redeploys your app.
 
+## Database Persistence
+
+The SQLite database file (`emr.db`) is stored in the service's file system and persists across deployments as long as the service continues running. The file is automatically created on first startup if it doesn't exist.
+
 ## That's It!
 
-Your EMR system is now deployed to Render. No manual configuration needed - the blueprint handles everything.
+Your EMR system is now deployed to Render on the free tier. No database configuration needed - SQLite handles everything.
 
 For troubleshooting, check the **Logs** tab in your service dashboard.
