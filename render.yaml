@@ -3,7 +3,7 @@ services:
     name: emr-api
     env: node
     plan: free
-    buildCommand: npm ci && npm run install-all && npm run build
+    buildCommand: npm ci --include=dev && npm run install-all && npm run build
     startCommand: npm run start
     envVars:
       - key: NODE_ENV
