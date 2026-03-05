@@ -13,6 +13,8 @@ services:
           name: emr-db
           property: connectionString
 
-  - type: pserv
-    name: emr-db
+databases:
+  - name: emr-db
+    databaseName: emr_db
+    user: emr_user
     plan: free
