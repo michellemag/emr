@@ -17,4 +17,3 @@ services:
     name: emr-db
     plan: free
     ipAllowList: []
-    postgresMajorVersion: 15
