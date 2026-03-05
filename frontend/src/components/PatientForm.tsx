@@ -7,7 +7,7 @@ interface PatientFormProps {
 
 const SCENARIO_TYPES = [
   { value: 'standard', label: 'Standard Case' },
-  { value: 'pregnant', label: 'Pregnant Student' },
+  { value: 'pregnant', label: 'Pregnant' },
   { value: 'aged_care', label: 'Aged Care' },
   { value: 'eating_disorder', label: 'Eating Disorder' },
 ]

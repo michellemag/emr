@@ -33,7 +33,7 @@ export default function PatientList({
 
   const scenarioLabels: Record<string, string> = {
     standard: 'Standard Case',
-    pregnant: 'Pregnant Student',
+    pregnant: 'Pregnant',
     aged_care: 'Aged Care',
     eating_disorder: 'Eating Disorder',
   }
