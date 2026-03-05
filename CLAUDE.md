@@ -81,7 +81,9 @@ emr/
 │   │   └── components/       # React components
 │   └── index.html            # Entry point
 ├── package.json              # Root package.json (workspaces)
-└── Procfile                  # Render deployment config
+├── render.yaml               # Render Blueprint configuration (recommended for deployment)
+├── Procfile                  # Render deployment config (alternative method)
+└── RENDER_BLUEPRINT_DEPLOY.md # Blueprint deployment guide
 ```
 
 ### Server Architecture
@@ -152,25 +154,43 @@ The app has three main views:
 
 ## Deployment
 
-### Render Deployment
-The project is configured for deployment on Render:
+### Render Deployment (Blueprint - Recommended)
+The simplest way to deploy is using Render's Blueprint feature:
+
+1. Commit code: `git push origin main`
+2. Go to https://render.com/ → **New +** → **Blueprint**
+3. Connect your GitHub repository
+4. Render will automatically create both the web service and PostgreSQL database
+5. After deployment, initialize the database:
+   - Click **Shell** in your service
+   - Run: `psql $DATABASE_URL < backend/sql/schema.sql`
+
+The `render.yaml` file defines:
+- **emr-api** web service with build and start commands
+- **emr-db** PostgreSQL database (free tier)
+- Automatic environment variable setup
+
+See `RENDER_BLUEPRINT_DEPLOY.md` for detailed instructions.
+
+### Alternative: Manual Render Deployment
+For manual setup or `Procfile`-based deployment:
 
 **Build Command:** `npm install && npm run install-all && npm run build`
 
 **Start Command:** `npm run start`
 
 **Environment Variables Required:**
-- `DATABASE_URL`: PostgreSQL connection string (e.g., from Render's PostgreSQL service)
-- `NODE_ENV`: Set to `production`
+- `DATABASE_URL`: PostgreSQL connection string
+- `NODE_ENV`: `production`
 
-The `Procfile` instructs Render to build both frontend and backend, then start the backend server which serves the complete application.
+The `Procfile` provides the same build and start commands for Render's classic deployment method.
 
-### Manual Deployment
-For other platforms, ensure:
+### Other Platforms
+For non-Render deployment:
 1. Run `npm run build` to create frontend and backend builds
 2. Run `npm start` to start the server
-3. Ensure `DATABASE_URL` environment variable is set for your PostgreSQL instance
-4. The server listens on the port defined by the `PORT` environment variable (default 3001)
+3. Set `DATABASE_URL` environment variable for your PostgreSQL instance
+4. Server listens on `PORT` environment variable (default 3001)
 
 ## Key Development Notes
 

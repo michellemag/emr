@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: emr-api
+    env: node
+    plan: free
+    buildCommand: npm install && npm run install-all && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: emr-db
+          property: connectionString
+
+  - type: pserv
+    name: emr-db
+    plan: free
+    ipAllowList: []
+    postgresMajorVersion: 15
