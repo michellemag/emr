@@ -43,13 +43,22 @@ npm run dev
 
 # OR run separately:
 npm run dev --workspace backend    # Port 3001
-npm run dev --workspace frontend   # Port 3000
+npm run dev --workspace frontend   # Port 3000 (proxies /api to backend)
 ```
 
-### Build
+### Build for Production
 ```bash
 npm run build
 ```
+
+This builds both the frontend (creates dist/) and backend (creates dist/ with compiled TypeScript).
+
+### Production Start
+```bash
+npm start
+```
+
+Starts the backend server which serves both the API and the frontend static files on a single port.
 
 ### Run Tests
 ```bash
@@ -70,9 +79,23 @@ emr/
 │   ├── src/
 │   │   ├── App.tsx           # Main app component
 │   │   └── components/       # React components
-│   └── index.html    # Entry point
-└── package.json       # Root package.json (workspaces)
+│   └── index.html            # Entry point
+├── package.json              # Root package.json (workspaces)
+└── Procfile                  # Render deployment config
 ```
+
+### Server Architecture
+
+**Development:** Frontend (Vite) and Backend (Express) run on separate ports with API proxy configured in Vite.
+
+**Production:** Backend serves both:
+- REST API endpoints at `/api/*`
+- Frontend static files (React build) at `/` with fallback to `index.html` for client-side routing
+
+The backend's `src/index.ts` is configured to:
+1. Serve `/api/*` endpoints for the API
+2. Serve static files from `frontend/dist/`
+3. Fallback non-API requests to `index.html` to support React routing
 
 ### Database Design
 
@@ -127,10 +150,32 @@ The app has three main views:
 2. **Create Patient** - Add new simulated patient
 3. **EMR Form View** - Create and view forms for selected patient
 
-## Notes for Future Development
+## Deployment
 
-- Frontend styling is basic CSS - consider adding a CSS framework (Tailwind, Bootstrap) when expanding UI
-- Form validation is minimal - add client-side validation before backend submission
-- No authentication yet - will need user management for students/instructors
-- No export functionality yet - plan for PDF export of forms
-- Scenario-specific fields can be added by extending the form data structure
+### Render Deployment
+The project is configured for deployment on Render:
+
+**Build Command:** `npm install && npm run install-all && npm run build`
+
+**Start Command:** `npm run start`
+
+**Environment Variables Required:**
+- `DATABASE_URL`: PostgreSQL connection string (e.g., from Render's PostgreSQL service)
+- `NODE_ENV`: Set to `production`
+
+The `Procfile` instructs Render to build both frontend and backend, then start the backend server which serves the complete application.
+
+### Manual Deployment
+For other platforms, ensure:
+1. Run `npm run build` to create frontend and backend builds
+2. Run `npm start` to start the server
+3. Ensure `DATABASE_URL` environment variable is set for your PostgreSQL instance
+4. The server listens on the port defined by the `PORT` environment variable (default 3001)
+
+## Key Development Notes
+
+- **Frontend Styling**: Currently uses basic CSS (`src/index.css`). Consider Tailwind or Bootstrap when expanding UI.
+- **Form Validation**: Minimal client-side validation - API accepts any JSON in form data. Add validation as requirements become clearer.
+- **Authentication**: Not yet implemented. When adding, consider student/instructor roles.
+- **Form Data Structure**: The `forms.data` field in the database is flexible JSON. Scenario-specific fields can be added here.
+- **Vite Proxy**: In development, the frontend proxies `/api` requests to `http://localhost:3001`. This is configured in `frontend/vite.config.ts`.

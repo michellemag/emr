@@ -2,15 +2,21 @@ import express from 'express';
 import cors from 'cors';
 import { Pool } from 'pg';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 dotenv.config();
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Serve static files from frontend build
+app.use(express.static(path.join(__dirname, '../../frontend/dist')));
 
 // Database connection
 const pool = new Pool({
@@ -79,6 +85,11 @@ app.post('/api/forms', async (req, res) => {
     console.error(error);
     res.status(500).json({ error: 'Failed to create form' });
   }
+});
+
+// Fallback to serve index.html for client-side routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/dist/index.html'));
 });
 
 app.listen(port, () => {
